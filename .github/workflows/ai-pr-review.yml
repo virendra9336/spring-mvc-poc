@@ -1,0 +1,64 @@
+name: AI PR Review
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_url:
+        description: "Pull Request URL"
+        required: true
+        type: string
+
+      ai_token:
+        description: "AI Token"
+        required: true
+        type: string
+
+permissions:
+  pull-requests: write
+  issues: write
+  contents: read
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Call AI Agent
+        id: review
+        shell: bash
+        run: |
+          RESPONSE=$(curl -s -X POST "https://your-ai-agent.com/api/review" \
+            -H "Content-Type: application/json" \
+            -d '{
+                  "prUrl":"${{ github.event.inputs.pr_url }}",
+                  "githubToken":"${{ secrets.GITHUB_TOKEN }}",
+                  "aiToken":"${{ github.event.inputs.ai_token }}"
+                }')
+
+          echo "response<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$RESPONSE" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+#      - name: Comment on PR
+#        uses: actions/github-script@v7
+#        with:
+#          github-token: ${{ secrets.GITHUB_TOKEN }}
+#          script: |
+#            const prUrl = "${{ github.event.inputs.pr_url }}";
+#
+#            // Example:
+#            // https://github.com/owner/repo/pull/15
+#            const parts = prUrl.split("/");
+#
+#            const owner = parts[3];
+#            const repo = parts[4];
+#            const issue_number = Number(parts[6]);
+#
+#            await github.rest.issues.createComment({
+#              owner,
+#              repo,
+#              issue_number,
+#              body: `${{ steps.review.outputs.response }}`
+#            });
+#
+#            console.log("AI Review comment posted successfully.");
