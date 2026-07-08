@@ -3,8 +3,8 @@ name: AI PR Review
 on:
   workflow_dispatch:
     inputs:
-      pr_url:
-        description: "Pull Request URL"
+      pr_number:
+        description: "Pull Request Number (Example: 15)"
         required: true
         type: string
 
@@ -24,39 +24,55 @@ jobs:
 
     steps:
 
-      # Print user inputs
-      - name: Print User Inputs
+      - name: Build PR URL
+        id: pr
         shell: bash
         run: |
-          echo "======================================="
-          echo "GitHub Action Started"
-          echo "======================================="
-          echo "PR URL    : ${{ github.event.inputs.pr_url }}"
-          echo "AI Token  : ${{ github.event.inputs.ai_token }}"
-          echo "======================================="
 
-      # Call AI Agent
+          PR_URL="https://github.com/${{ github.repository }}/pull/${{ github.event.inputs.pr_number }}"
+
+          echo "====================================="
+          echo "Repository : ${{ github.repository }}"
+          echo "PR Number  : ${{ github.event.inputs.pr_number }}"
+          echo "PR URL     : $PR_URL"
+          echo "AI Token   : ${{ github.event.inputs.ai_token }}"
+          echo "====================================="
+
+          echo "pr_url=$PR_URL" >> $GITHUB_OUTPUT
+
       - name: Call AI Agent
         id: review
         shell: bash
         run: |
-          echo "Calling AI Agent..."
 
           RESPONSE=$(curl -s -X POST "https://your-ai-agent.com/api/review" \
             -H "Content-Type: application/json" \
             -d '{
-                  "prUrl":"${{ github.event.inputs.pr_url }}",
+                  "prUrl":"${{ steps.pr.outputs.pr_url }}",
                   "githubToken":"${{ secrets.GITHUB_TOKEN }}",
                   "aiToken":"${{ github.event.inputs.ai_token }}"
                 }')
 
-          echo ""
-          echo "========== AI Response =========="
+          echo "AI Response:"
           echo "$RESPONSE"
-          echo "================================="
 
           echo "response<<EOF" >> "$GITHUB_OUTPUT"
           echo "$RESPONSE" >> "$GITHUB_OUTPUT"
           echo "EOF" >> "$GITHUB_OUTPUT"
 
-      
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+
+            const response = `${{ steps.review.outputs.response }}`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: Number("${{ github.event.inputs.pr_number }}"),
+              body: response
+            });
+
+            console.log("AI Review comment posted successfully.");
