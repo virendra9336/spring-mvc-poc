@@ -59,35 +59,4 @@ jobs:
           echo "$RESPONSE" >> "$GITHUB_OUTPUT"
           echo "EOF" >> "$GITHUB_OUTPUT"
 
-      # Comment on PR
-      - name: Comment on PR
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const prUrl = "${{ github.event.inputs.pr_url }}";
-
-            // Example:
-            // https://github.com/owner/repo/pull/15
-
-            const parts = prUrl.split("/");
-
-            const owner = parts[3];
-            const repo = parts[4];
-            const issue_number = Number(parts[6]);
-
-            const response = `${{ steps.review.outputs.response }}`;
-
-            await github.rest.issues.createComment({
-              owner,
-              repo,
-              issue_number,
-              body: response
-            });
-
-            console.log("=================================");
-            console.log("AI Review comment posted.");
-            console.log("Owner :", owner);
-            console.log("Repo  :", repo);
-            console.log("PR No :", issue_number);
-            console.log("=================================");
+      
