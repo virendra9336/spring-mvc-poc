@@ -1,0 +1,72 @@
+name: AI PR Review
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Print PR Information
+        run: |
+          echo "======================================="
+          echo "Repository : ${{ github.repository }}"
+          echo "PR Number  : ${{ github.event.pull_request.number }}"
+          echo "PR URL     : ${{ github.event.pull_request.html_url }}"
+          echo "PR Title   : ${{ github.event.pull_request.title }}"
+          echo "Author     : ${{ github.event.pull_request.user.login }}"
+          echo "======================================="
+
+      - name: Call AI Agent
+        id: review
+        shell: bash
+        env:
+          AI_TOKEN: ${{ secrets.AI_TOKEN }}
+        run: |
+
+          PR_URL="${{ github.event.pull_request.html_url }}"
+
+          echo "Calling AI Agent..."
+
+          RESPONSE=$(curl -s -X POST "https://your-ai-agent.com/api/review" \
+            -H "Content-Type: application/json" \
+            -d '{
+                  "prUrl":"'"$PR_URL"'",
+                  "githubToken":"${{ secrets.GITHUB_TOKEN }}",
+                  "aiToken":"'"$AI_TOKEN"'"
+                }')
+
+          echo "AI Response:"
+          echo "$RESPONSE"
+
+          echo "response<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$RESPONSE" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+
+            const response = `${{ steps.review.outputs.response }}`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body: response
+            });
+
+            console.log("AI Review comment posted successfully.");
